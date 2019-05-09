@@ -1,5 +1,9 @@
 # Loading Streaming Data from Amazon DynamoDB to AWS ElasticSearch Service
 
+by: Dasith kuruppu
+
+More info here: https://coderecipe.ai/architectures/21264803
+
 **Problem Statement:**
 
 Loading streaming data from Amazon DynamoDB into Amazon ElasticSearch Service without reading through complex documentation such as [this](https://docs.aws.amazon.com/elasticsearch-service/latest/developerguide/es-aws-integrations.html#es-aws-integrations-dynamodb-es) 
