@@ -1,0 +1,15 @@
+{
+    "presets": [
+      "@babel/typescript",
+      [
+        "@babel/env",
+        {
+          "modules": false,
+          "targets": {
+            "node": "8.20"
+          }
+        }
+      ]
+    ],
+    "plugins": ["@babel/plugin-proposal-object-rest-spread"]
+  }

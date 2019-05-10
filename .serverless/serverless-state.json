@@ -1,0 +1,525 @@
+{
+  "service": {
+    "service": "aws-nodejs",
+    "serviceObject": {
+      "name": "aws-nodejs"
+    },
+    "provider": {
+      "stage": "default",
+      "region": "us-east-1",
+      "variableSyntax": "\\${([ ~:a-zA-Z0-9._@'\",\\-\\/\\(\\)*]+?)}",
+      "name": "aws",
+      "runtime": "nodejs8.10",
+      "iamRoleStatements": [
+        {
+          "Effect": "Allow",
+          "Action": [
+            "dynamodb:ListTables",
+            "dynamodb:DescribeTable",
+            "dynamodb:DescribeStream",
+            "dynamodb:ListStreams",
+            "dynamodb:GetShardIterator",
+            "dynamodb:BatchGetItem",
+            "dynamodb:GetItem",
+            "dynamodb:PutItem",
+            "dynamodb:UpdateItem",
+            "dynamodb:DeleteItem",
+            "dynamodb:Query",
+            "dynamodb:Scan",
+            "dynamodb:DescribeReservedCapacity",
+            "dynamodb:DescribeReservedCapacityOfferings",
+            "dynamodb:GetRecords"
+          ],
+          "Resource": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:dynamodb:*:*:table/",
+                {
+                  "Ref": "EventsGqlDynamoDbTable"
+                }
+              ]
+            ]
+          }
+        },
+        {
+          "Effect": "Allow",
+          "Action": [
+            "es:ESHttpPost",
+            "es:ESHttpPut",
+            "es:ESHttpDelete",
+            "es:ESHttpGet"
+          ],
+          "Resource": [
+            {
+              "Fn::GetAtt": [
+                "EventsGqlElasticSearch",
+                "DomainArn"
+              ]
+            },
+            {
+              "Fn::Join": [
+                "",
+                [
+                  {
+                    "Fn::GetAtt": [
+                      "EventsGqlElasticSearch",
+                      "DomainArn"
+                    ]
+                  },
+                  "/*"
+                ]
+              ]
+            }
+          ]
+        }
+      ],
+      "versionFunctions": true,
+      "remoteFunctionData": null,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          },
+          "DynamoDashstreamDashtoDashelasticsearchLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/aws-nodejs-devdefault-dynamo-stream-to-elasticsearch"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "devdefault",
+                        "aws-nodejs",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/aws-nodejs-devdefault-dynamo-stream-to-elasticsearch:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/aws-nodejs-devdefault-dynamo-stream-to-elasticsearch:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iamRoleStatements\"][0]"
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iamRoleStatements\"][1]"
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "dynamodb:GetRecords",
+                          "dynamodb:GetShardIterator",
+                          "dynamodb:DescribeStream",
+                          "dynamodb:ListStreams"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::GetAtt": [
+                              "EventsGqlDynamoDbTable",
+                              "StreamArn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "aws-nodejs",
+                    "devdefault",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "DynamoDashstreamDashtoDashelasticsearchLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": {
+                  "Ref": "ServerlessDeploymentBucket"
+                },
+                "S3Key": "serverless/aws-nodejs/devdefault/1557451087426-2019-05-10T01:18:07.426Z/aws-nodejs.zip"
+              },
+              "FunctionName": "aws-nodejs-devdefault-dynamo-stream-to-elasticsearch",
+              "Handler": "handler.processStreams",
+              "MemorySize": 128,
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              },
+              "Runtime": "nodejs8.10",
+              "Timeout": 60,
+              "Environment": {
+                "Variables": {
+                  "ELASTICSEARCH_URL": {
+                    "Fn::GetAtt": [
+                      "EventsGqlElasticSearch",
+                      "DomainEndpoint"
+                    ]
+                  }
+                }
+              }
+            },
+            "DependsOn": [
+              "DynamoDashstreamDashtoDashelasticsearchLogGroup",
+              "IamRoleLambdaExecution"
+            ]
+          },
+          "DynamoDashstreamDashtoDashelasticsearchLambdaVersionyVLdd41nzvhVyfZ2OwwYVbLRPHVCmuOO2zBQrLfzHo": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "DynamoDashstreamDashtoDashelasticsearchLambdaFunction"
+              },
+              "CodeSha256": "G4BWUiRTpXY9Md8IAxSxBb0k9/UJ9h8rHsTxRzEXy2k="
+            }
+          },
+          "DynamoDashstreamDashtoDashelasticsearchEventSourceMappingDynamodbEventsGqlDynamoDbTable": {
+            "Type": "AWS::Lambda::EventSourceMapping",
+            "DependsOn": "IamRoleLambdaExecution",
+            "Properties": {
+              "BatchSize": 100,
+              "EventSourceArn": {
+                "Fn::GetAtt": [
+                  "EventsGqlDynamoDbTable",
+                  "StreamArn"
+                ]
+              },
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "DynamoDashstreamDashtoDashelasticsearchLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "StartingPosition": "TRIM_HORIZON",
+              "Enabled": "True"
+            }
+          },
+          "EventsGqlDynamoDbTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "devdefault-events",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "ProvisionedThroughput": {
+                "ReadCapacityUnits": 1,
+                "WriteCapacityUnits": 1
+              },
+              "StreamSpecification": {
+                "StreamViewType": "NEW_AND_OLD_IMAGES"
+              }
+            }
+          },
+          "EventsGqlElasticSearch": {
+            "Type": "AWS::Elasticsearch::Domain",
+            "Properties": {
+              "ElasticsearchVersion": "6.3",
+              "ElasticsearchClusterConfig": {
+                "DedicatedMasterEnabled": false,
+                "InstanceCount": "1",
+                "ZoneAwarenessEnabled": false,
+                "InstanceType": "t2.small.elasticsearch"
+              },
+              "EBSOptions": {
+                "EBSEnabled": true,
+                "Iops": 0,
+                "VolumeSize": 10,
+                "VolumeType": "gp2"
+              },
+              "AccessPolicies": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "AWS": "*"
+                    },
+                    "Action": "es:*",
+                    "Resource": "*"
+                  }
+                ]
+              },
+              "AdvancedOptions": {
+                "rest.action.multi.allow_explicit_index": "true"
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          },
+          "DynamoDashstreamDashtoDashelasticsearchLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "DynamoDashstreamDashtoDashelasticsearchLambdaVersionyVLdd41nzvhVyfZ2OwwYVbLRPHVCmuOO2zBQrLfzHo"
+            }
+          }
+        }
+      },
+      "coreCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "ServerlessDeploymentBucket": {
+            "Type": "AWS::S3::Bucket",
+            "Properties": {
+              "BucketEncryption": {
+                "ServerSideEncryptionConfiguration": [
+                  {
+                    "ServerSideEncryptionByDefault": {
+                      "SSEAlgorithm": "AES256"
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": {
+              "Ref": "ServerlessDeploymentBucket"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "custom": {
+      "stage": "devdefault",
+      "tableName": "devdefault-events",
+      "tableThroughputs": {
+        "prod": 1,
+        "default": 1
+      },
+      "tableThroughput": 1,
+      "webpack": {
+        "webpackConfig": "./webpack.config.js",
+        "includeModules": true,
+        "packager": "npm"
+      },
+      "dynamodb": {
+        "start": {
+          "port": 8000,
+          "migrate": true,
+          "inMemory": true,
+          "noStart": true
+        }
+      },
+      "dynamodbStream": {
+        "port": 8000,
+        "streams": [
+          {
+            "table": "EventTable",
+            "functions": [
+              "processStreams"
+            ]
+          }
+        ]
+      },
+      "environment": {
+        "ENV_TYPE": "dev",
+        "ELASTICSEARCH_URL": {
+          "Fn::GetAtt": [
+            "EventsGqlElasticSearch",
+            "DomainEndpoint"
+          ]
+        }
+      }
+    },
+    "plugins": [
+      "serverless-webpack",
+      "serverless-dynamodb-local",
+      "serverless-plugin-offline-dynamodb-stream",
+      "serverless-offline"
+    ],
+    "pluginsData": {},
+    "functions": {
+      "dynamo-stream-to-elasticsearch": {
+        "handler": "handler.processStreams",
+        "memorySize": 128,
+        "timeout": 60,
+        "events": [
+          {
+            "stream": {
+              "type": "dynamodb",
+              "batchSize": 100,
+              "enabled": true,
+              "arn": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"IamRoleLambdaExecution\"][\"Properties\"][\"Policies\"][0][\"PolicyDocument\"][\"Statement\"][4][\"Resource\"][0]"
+              }
+            }
+          }
+        ],
+        "environment": {
+          "ELASTICSEARCH_URL": {
+            "Fn::GetAtt": [
+              "EventsGqlElasticSearch",
+              "DomainEndpoint"
+            ]
+          }
+        },
+        "name": "aws-nodejs-devdefault-dynamo-stream-to-elasticsearch",
+        "package": {
+          "artifact": ".serverless\\aws-nodejs.zip"
+        },
+        "memory": 128,
+        "runtime": "nodejs8.10",
+        "vpc": {}
+      }
+    },
+    "resources": {
+      "Resources": {
+        "EventsGqlDynamoDbTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "devdefault-events",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "ProvisionedThroughput": {
+              "ReadCapacityUnits": 1,
+              "WriteCapacityUnits": 1
+            },
+            "StreamSpecification": {
+              "StreamViewType": "NEW_AND_OLD_IMAGES"
+            }
+          }
+        },
+        "EventsGqlElasticSearch": {
+          "Type": "AWS::Elasticsearch::Domain",
+          "Properties": {
+            "ElasticsearchVersion": "6.3",
+            "ElasticsearchClusterConfig": {
+              "DedicatedMasterEnabled": false,
+              "InstanceCount": "1",
+              "ZoneAwarenessEnabled": false,
+              "InstanceType": "t2.small.elasticsearch"
+            },
+            "EBSOptions": {
+              "EBSEnabled": true,
+              "Iops": 0,
+              "VolumeSize": 10,
+              "VolumeType": "gp2"
+            },
+            "AccessPolicies": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {
+                    "AWS": "*"
+                  },
+                  "Action": "es:*",
+                  "Resource": "*"
+                }
+              ]
+            },
+            "AdvancedOptions": {
+              "rest.action.multi.allow_explicit_index": "true"
+            }
+          }
+        }
+      },
+      "Outputs": {}
+    },
+    "layers": {}
+  },
+  "package": {
+    "artifactDirectoryName": "serverless/aws-nodejs/devdefault/1557451087426-2019-05-10T01:18:07.426Z",
+    "artifact": ""
+  }
+}
